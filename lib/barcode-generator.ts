@@ -239,6 +239,52 @@ export const generateCode128 = async (data: string, width = 300, height = 100): 
   }
 
   try {
+    // Use JsBarcode library via CDN
+    const jsBarcodeCDN = "https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"
+
+    // Check if JsBarcode is already loaded
+    if (!(window as any).JsBarcode) {
+      await new Promise<void>((resolve, reject) => {
+        const script = document.createElement("script")
+        script.src = jsBarcodeCDN
+        script.onload = () => resolve()
+        script.onerror = () => reject(new Error("Failed to load JsBarcode library"))
+        document.head.appendChild(script)
+      })
+    }
+
+    // Create SVG element
+    const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+    svgElement.setAttribute("width", width.toString())
+    svgElement.setAttribute("height", height.toString())
+
+    // Generate barcode using JsBarcode
+    ;(window as any).JsBarcode(svgElement, data, {
+      format: "CODE128",
+      width: 2,
+      height: height - 20,
+      displayValue: true,
+      fontSize: 12,
+      textMargin: 2,
+      margin: 10,
+      background: "#ffffff",
+      lineColor: "#000000",
+    })
+
+    // Convert SVG to data URL
+    const svgData = new XMLSerializer().serializeToString(svgElement)
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgData)}`
+  } catch (error) {
+    console.error("Error generating Code 128:", error)
+
+    // Fallback to our custom implementation if JsBarcode fails
+    return generateCode128Fallback(data, width, height)
+  }
+}
+
+// Fallback implementation if JsBarcode fails
+const generateCode128Fallback = (data: string, width = 300, height = 100): string => {
+  try {
     // Build the barcode pattern
     let pattern = ""
     let checksum = 104 // Start B value
@@ -284,7 +330,7 @@ export const generateCode128 = async (data: string, width = 300, height = 100): 
 
     return `data:image/svg+xml,${encodeURIComponent(svg)}`
   } catch (error) {
-    console.error("Error generating Code 128:", error)
+    console.error("Error in fallback Code 128 generation:", error)
     throw new Error(`Failed to generate Code 128 barcode: ${error.message}`)
   }
 }
