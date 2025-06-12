@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { isSupabaseConfigured, type BarcodeJob } from "@/lib/supabase"
-import { createBarcodeWithText, downloadImage } from "@/lib/barcode-generator"
+import { createBarcodeWithText, downloadImage, printBarcode, printMultipleBarcodes } from "@/lib/barcode-generator"
 import { downloadCSVTemplate } from "@/lib/csv-template"
 import { createBarcodePDF, downloadPDF } from "@/lib/pdf-generator"
 
@@ -34,6 +34,7 @@ export default function BarcodeGenerator() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [paperSize, setPaperSize] = useState<"thermal" | "letter">("thermal")
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait")
+  const [printMode, setPrintMode] = useState<"download" | "print">("download")
 
   const labelSizes = [
     { value: "2x1", label: '2" x 1" (Small Labels)', thermal: [50.8, 25.4], letter: [50.8, 25.4] },
@@ -93,13 +94,17 @@ export default function BarcodeGenerator() {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
       const filename = `${codeType}-${singleSku || "barcode"}-${timestamp}.png`
 
-      // Auto-download the barcode
-      downloadImage(barcodeDataUrl, filename)
+      // Either download or print based on mode
+      if (printMode === "download") {
+        downloadImage(barcodeDataUrl, filename)
+      } else {
+        printBarcode(barcodeDataUrl, `${codeType.toUpperCase()} - ${singleSku || singleData}`)
+      }
 
       // Create a new job object
       const newJob: BarcodeJob = {
         id: `local-${Date.now()}`, // Unique ID for localStorage
-        job_name: `Single ${codeType.toUpperCase()} - ${singleSku || "Untitled"}`,
+        job_name: `Single ${codeType.toUpperCase()} - ${singleSku || singleData}`,
         code_type: codeType,
         label_size: labelSize,
         total_codes: 1,
@@ -261,15 +266,21 @@ export default function BarcodeGenerator() {
       // Create a single PDF with all barcodes
       if (barcodeImages.length > 0) {
         try {
-          // Generate PDF with all barcodes
-          const pdfDataUrl = await createBarcodePDF(barcodeImages, jobName, paperSize, orientation, labelSize)
+          if (printMode === "download") {
+            // Generate PDF with all barcodes
+            const pdfDataUrl = await createBarcodePDF(barcodeImages, jobName, paperSize, orientation, labelSize)
 
-          // Download the PDF
-          const timestamp = new Date().toISOString().split("T")[0]
-          const pdfFilename = `${codeType}-batch-${jobName.replace(/[^a-zA-Z0-9]/g, "-")}-${timestamp}.pdf`
+            // Download the PDF
+            const timestamp = new Date().toISOString().split("T")[0]
+            const pdfFilename = `${codeType}-batch-${jobName.replace(/[^a-zA-Z0-9]/g, "-")}-${timestamp}.pdf`
 
-          downloadPDF(pdfDataUrl, pdfFilename)
-          console.log("PDF download initiated")
+            downloadPDF(pdfDataUrl, pdfFilename)
+            console.log("PDF download initiated")
+          } else {
+            // Print all barcodes
+            printMultipleBarcodes(barcodeImages)
+            console.log("Print initiated")
+          }
         } catch (pdfError) {
           console.error("Error creating PDF:", pdfError)
           alert(
@@ -345,7 +356,12 @@ export default function BarcodeGenerator() {
 
         const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
         const filename = `${job.code_type}-redownload-${timestamp}.png`
-        downloadImage(barcodeDataUrl, filename)
+
+        if (printMode === "download") {
+          downloadImage(barcodeDataUrl, filename)
+        } else {
+          printBarcode(barcodeDataUrl, `${job.code_type.toUpperCase()} - ${job.job_name}`)
+        }
       } else {
         // For bulk jobs, show a message that we can't regenerate without original data
         alert(
@@ -494,6 +510,34 @@ export default function BarcodeGenerator() {
                           />
                         </div>
 
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <Label htmlFor="printMode" className="text-sm font-medium text-gray-700">
+                            Output Mode
+                          </Label>
+                          <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
+                            <button
+                              onClick={() => setPrintMode("download")}
+                              className={`px-3 py-1 text-sm font-medium rounded ${
+                                printMode === "download"
+                                  ? "bg-white text-gray-900 shadow-sm"
+                                  : "text-gray-600 hover:text-gray-900"
+                              }`}
+                            >
+                              Download
+                            </button>
+                            <button
+                              onClick={() => setPrintMode("print")}
+                              className={`px-3 py-1 text-sm font-medium rounded ${
+                                printMode === "print"
+                                  ? "bg-white text-gray-900 shadow-sm"
+                                  : "text-gray-600 hover:text-gray-900"
+                              }`}
+                            >
+                              Print
+                            </button>
+                          </div>
+                        </div>
+
                         <Button
                           onClick={generateSingleCode}
                           disabled={!singleData || isProcessing}
@@ -504,10 +548,15 @@ export default function BarcodeGenerator() {
                               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
                               Generating...
                             </>
-                          ) : (
+                          ) : printMode === "download" ? (
                             <>
                               <Download className="w-4 h-4 mr-2" />
                               Generate & Download {codeType === "qr" ? "QR Code" : "Barcode"}
+                            </>
+                          ) : (
+                            <>
+                              <Printer className="w-4 h-4 mr-2" />
+                              Generate & Print {codeType === "qr" ? "QR Code" : "Barcode"}
                             </>
                           )}
                         </Button>
@@ -552,6 +601,34 @@ export default function BarcodeGenerator() {
                             checked={displayBarcodeData}
                             onCheckedChange={setDisplayBarcodeData}
                           />
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <Label htmlFor="bulkPrintMode" className="text-sm font-medium text-gray-700">
+                            Output Mode
+                          </Label>
+                          <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
+                            <button
+                              onClick={() => setPrintMode("download")}
+                              className={`px-3 py-1 text-sm font-medium rounded ${
+                                printMode === "download"
+                                  ? "bg-white text-gray-900 shadow-sm"
+                                  : "text-gray-600 hover:text-gray-900"
+                              }`}
+                            >
+                              Download
+                            </button>
+                            <button
+                              onClick={() => setPrintMode("print")}
+                              className={`px-3 py-1 text-sm font-medium rounded ${
+                                printMode === "print"
+                                  ? "bg-white text-gray-900 shadow-sm"
+                                  : "text-gray-600 hover:text-gray-900"
+                              }`}
+                            >
+                              Print
+                            </button>
+                          </div>
                         </div>
 
                         <div className="space-y-2">
@@ -609,10 +686,15 @@ export default function BarcodeGenerator() {
                               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
                               Processing...
                             </>
+                          ) : printMode === "download" ? (
+                            <>
+                              <Download className="w-4 h-4 mr-2" />
+                              Generate PDF with All Barcodes
+                            </>
                           ) : (
                             <>
                               <Printer className="w-4 h-4 mr-2" />
-                              Generate PDF with All Barcodes
+                              Generate & Print All Barcodes
                             </>
                           )}
                         </Button>
@@ -714,8 +796,17 @@ export default function BarcodeGenerator() {
                                     className="flex-1 text-xs"
                                     disabled={isProcessing}
                                   >
-                                    <Download className="w-3 h-3 mr-1" />
-                                    Download
+                                    {printMode === "download" ? (
+                                      <>
+                                        <Download className="w-3 h-3 mr-1" />
+                                        Download
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Printer className="w-3 h-3 mr-1" />
+                                        Print
+                                      </>
+                                    )}
                                   </Button>
                                 ) : (
                                   <Button

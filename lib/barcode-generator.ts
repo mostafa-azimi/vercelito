@@ -225,7 +225,7 @@ export const generateQRCode = async (data: string, size = 200): Promise<string> 
   }
 }
 
-export const generateCode128 = async (data: string, width = 300, height = 100): Promise<string> => {
+export const generateCode128 = async (data: string, width = 300, height = 100, showText = false): Promise<string> => {
   // Validate input
   if (!data || data.length === 0) {
     throw new Error("Data cannot be empty for Code 128 barcode")
@@ -258,14 +258,12 @@ export const generateCode128 = async (data: string, width = 300, height = 100): 
     svgElement.setAttribute("width", width.toString())
     svgElement.setAttribute("height", height.toString())
 
-    // Generate barcode using JsBarcode
+    // Generate barcode using JsBarcode - turn off displayValue to avoid duplicate text
     ;(window as any).JsBarcode(svgElement, data, {
       format: "CODE128",
       width: 2,
       height: height - 20,
-      displayValue: true,
-      fontSize: 12,
-      textMargin: 2,
+      displayValue: false, // Don't show text in the barcode itself
       margin: 10,
       background: "#ffffff",
       lineColor: "#000000",
@@ -278,12 +276,12 @@ export const generateCode128 = async (data: string, width = 300, height = 100): 
     console.error("Error generating Code 128:", error)
 
     // Fallback to our custom implementation if JsBarcode fails
-    return generateCode128Fallback(data, width, height)
+    return generateCode128Fallback(data, width, height, showText)
   }
 }
 
 // Fallback implementation if JsBarcode fails
-const generateCode128Fallback = (data: string, width = 300, height = 100): string => {
+const generateCode128Fallback = (data: string, width = 300, height = 100, showText = false): string => {
   try {
     // Build the barcode pattern
     let pattern = ""
@@ -324,7 +322,11 @@ const generateCode128Fallback = (data: string, width = 300, height = 100): strin
               : "",
           )
           .join("")}
-        <text x="50%" y="${height - 5}" text-anchor="middle" font-family="monospace" font-size="12">${data}</text>
+        ${
+          showText
+            ? `<text x="50%" y="${height - 5}" text-anchor="middle" font-family="monospace" font-size="12">${data}</text>`
+            : ""
+        }
       </svg>
     `
 
@@ -411,7 +413,8 @@ export const createBarcodeWithText = async (
       const qrSize = Math.min(adjustedBarcodeWidth, adjustedBarcodeHeight)
       barcodeUrl = await generateQRCode(data, qrSize)
     } else {
-      barcodeUrl = await generateCode128(data, adjustedBarcodeWidth, adjustedBarcodeHeight)
+      // Pass false to generateCode128 to not show text in the barcode itself
+      barcodeUrl = await generateCode128(data, adjustedBarcodeWidth, adjustedBarcodeHeight, false)
     }
   } catch (error) {
     console.error("Barcode generation error:", error)
@@ -483,12 +486,32 @@ export const createBarcodeWithText = async (
 }
 
 export const downloadImage = (dataUrl: string, filename: string) => {
+  // Convert data URL to Blob for better browser handling
+  const byteString = atob(dataUrl.split(",")[1])
+  const mimeString = dataUrl.split(",")[0].split(":")[1].split(";")[0]
+  const ab = new ArrayBuffer(byteString.length)
+  const ia = new Uint8Array(ab)
+
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i)
+  }
+
+  const blob = new Blob([ab], { type: mimeString })
+  const url = URL.createObjectURL(blob)
+
+  // Create link and trigger download
   const link = document.createElement("a")
   link.download = filename
-  link.href = dataUrl
+  link.href = url
+  link.style.display = "none"
   document.body.appendChild(link)
   link.click()
-  document.body.removeChild(link)
+
+  // Clean up
+  setTimeout(() => {
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }, 100)
 }
 
 export const downloadMultipleImages = async (images: { dataUrl: string; filename: string }[]) => {
@@ -526,4 +549,144 @@ export const downloadMultipleImages = async (images: { dataUrl: string; filename
   }
 
   console.log(`Completed download initiation for ${images.length} images`)
+}
+
+// New function to print a single barcode
+export const printBarcode = (dataUrl: string, title = "Barcode") => {
+  // Create a new window for printing
+  const printWindow = window.open("", "_blank")
+
+  if (!printWindow) {
+    alert("Please allow pop-ups to print barcodes")
+    return
+  }
+
+  // Set up the print window content
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Print ${title}</title>
+      <style>
+        body {
+          margin: 0;
+          padding: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
+        }
+        img {
+          max-width: 100%;
+          height: auto;
+        }
+        @media print {
+          body {
+            margin: 0;
+            padding: 0;
+          }
+          img {
+            max-width: 100%;
+            max-height: 100%;
+            page-break-inside: avoid;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <img src="${dataUrl}" alt="${title}" />
+      <script>
+        // Auto-print when loaded
+        window.onload = function() {
+          setTimeout(function() {
+            window.print();
+            // Close the window after print dialog is closed (with a delay)
+            setTimeout(function() {
+              window.close();
+            }, 500);
+          }, 500);
+        };
+      </script>
+    </body>
+    </html>
+  `)
+
+  printWindow.document.close()
+}
+
+// New function to print multiple barcodes
+export const printMultipleBarcodes = async (images: { dataUrl: string; filename: string }[]) => {
+  console.log(`Printing ${images.length} barcodes...`)
+
+  // Create a new window for printing
+  const printWindow = window.open("", "_blank")
+
+  if (!printWindow) {
+    alert("Please allow pop-ups to print barcodes")
+    return
+  }
+
+  // Set up the print window content
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Print Barcodes</title>
+      <style>
+        body {
+          margin: 0;
+          padding: 20px;
+          font-family: Arial, sans-serif;
+        }
+        .barcode-container {
+          page-break-inside: avoid;
+          margin-bottom: 20px;
+          text-align: center;
+        }
+        img {
+          max-width: 100%;
+          height: auto;
+        }
+        .filename {
+          margin-top: 5px;
+          font-size: 12px;
+          color: #666;
+        }
+        @media print {
+          body {
+            margin: 0;
+            padding: 10px;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <h1>Barcodes (${images.length})</h1>
+      ${images
+        .map(
+          (image) => `
+        <div class="barcode-container">
+          <img src="${image.dataUrl}" alt="${image.filename}" />
+          <div class="filename">${image.filename}</div>
+        </div>
+      `,
+        )
+        .join("")}
+      <script>
+        // Auto-print when loaded
+        window.onload = function() {
+          setTimeout(function() {
+            window.print();
+            // Close the window after print dialog is closed (with a delay)
+            setTimeout(function() {
+              window.close();
+            }, 500);
+          }, 1000);
+        };
+      </script>
+    </body>
+    </html>
+  `)
+
+  printWindow.document.close()
 }
