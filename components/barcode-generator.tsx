@@ -32,7 +32,6 @@ export default function BarcodeGenerator() {
   const [processingProgress, setProcessingProgress] = useState(0)
   const [csvData, setCsvData] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [paperSize, setPaperSize] = useState<"thermal" | "letter">("thermal")
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait")
   const [printMode, setPrintMode] = useState<"download" | "print">("download")
 
@@ -268,7 +267,7 @@ export default function BarcodeGenerator() {
         try {
           if (printMode === "download") {
             // Generate PDF with all barcodes
-            const pdfDataUrl = await createBarcodePDF(barcodeImages, jobName, paperSize, orientation, labelSize)
+            const pdfDataUrl = await createBarcodePDF(barcodeImages, jobName, "thermal", orientation, labelSize)
 
             // Download the PDF
             const timestamp = new Date().toISOString().split("T")[0]
@@ -507,6 +506,7 @@ export default function BarcodeGenerator() {
                             id="displayData"
                             checked={displayBarcodeData}
                             onCheckedChange={setDisplayBarcodeData}
+                            className="scale-50 data-[state=checked]:bg-[#f13a3a]"
                           />
                         </div>
 
@@ -600,6 +600,7 @@ export default function BarcodeGenerator() {
                             id="bulkDisplayData"
                             checked={displayBarcodeData}
                             onCheckedChange={setDisplayBarcodeData}
+                            className="scale-50 data-[state=checked]:bg-[#f13a3a]"
                           />
                         </div>
 
@@ -712,19 +713,6 @@ export default function BarcodeGenerator() {
                     <h3 className="text-sm font-medium text-gray-900">Label Settings</h3>
                   </div>
                   <div className="p-4 space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-700">Paper Type</Label>
-                      <Select value={paperSize} onValueChange={(value: "thermal" | "letter") => setPaperSize(value)}>
-                        <SelectTrigger className="border-gray-300">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="thermal">Thermal Labels</SelectItem>
-                          <SelectItem value="letter">8.5" x 11" Paper</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-gray-700">Orientation</Label>
                       <Select

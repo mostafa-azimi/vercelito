@@ -401,8 +401,9 @@ export const createBarcodeWithText = async (
   const barcodeHeight = height - currentY - padding - bottomTextHeight - (showData ? dataTextHeight : 0)
   const barcodeWidth = width - padding * 2
 
-  // Adjust barcode size for small labels
-  const barcodeSizeMultiplier = isSmallLabel ? 0.8 : 1
+  // Make barcodes smaller relative to label size
+  // Use smaller multipliers to reduce barcode size
+  const barcodeSizeMultiplier = isSmallLabel ? 0.6 : 0.7
   const adjustedBarcodeHeight = barcodeHeight * barcodeSizeMultiplier
   const adjustedBarcodeWidth = barcodeWidth * barcodeSizeMultiplier
 
