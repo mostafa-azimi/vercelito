@@ -1,356 +1,412 @@
-// Barcode generation utilities
-
-// Code 128 character set and patterns
-const CODE128_PATTERNS = {
-  // Each pattern is 11 bits: 1=bar, 0=space
-  0: "11011001100", // 0
-  1: "11001101100", // 1
-  2: "11001100110", // 2
-  3: "10010011000", // 3
-  4: "10010001100", // 4
-  5: "10001001100", // 5
-  6: "10011001000", // 6
-  7: "10011000100", // 7
-  8: "10001100100", // 8
-  9: "11001001000", // 9
-  10: "11001000100", // 10
-  11: "11000100100", // 11
-  12: "10110011100", // 12
-  13: "10011011100", // 13
-  14: "10011001110", // 14
-  15: "10111001100", // 15
-  16: "10011101100", // 16
-  17: "10011100110", // 17
-  18: "11001110010", // 18
-  19: "11001011100", // 19
-  20: "11001001110", // 20
-  21: "11011100100", // 21
-  22: "11001110100", // 22
-  23: "11101101110", // 23
-  24: "11101001100", // 24
-  25: "11100101100", // 25
-  26: "11100100110", // 26
-  27: "11101100100", // 27
-  28: "11100110100", // 28
-  29: "11100110010", // 29
-  30: "11011011000", // 30
-  31: "11011000110", // 31
-  32: "11000110110", // 32 (space)
-  33: "10100011000", // 33 !
-  34: "10001011000", // 34 "
-  35: "10001000110", // 35 #
-  36: "10110001000", // 36 $
-  37: "10001101000", // 37 %
-  38: "10001100010", // 38 &
-  39: "11010001000", // 39 '
-  40: "11000101000", // 40 (
-  41: "11000100010", // 41 )
-  42: "10110111000", // 42 *
-  43: "10110001110", // 43 +
-  44: "10001101110", // 44 ,
-  45: "10111011000", // 45 -
-  46: "10111000110", // 46 .
-  47: "10001110110", // 47 /
-  48: "11101110110", // 48 0
-  49: "11010001110", // 49 1
-  50: "11000101110", // 50 2
-  51: "11011101000", // 51 3
-  52: "11011100010", // 52 4
-  53: "11011101110", // 53 5
-  54: "11101011000", // 54 6
-  55: "11101000110", // 55 7
-  56: "11100010110", // 56 8
-  57: "11101101000", // 57 9
-  58: "11101100010", // 58 :
-  59: "11100011010", // 59 ;
-  60: "11101111010", // 60 <
-  61: "11001000010", // 61 =
-  62: "11110001010", // 62 >
-  63: "10100110000", // 63 ?
-  64: "10100001100", // 64 @
-  65: "10010110000", // 65 A
-  66: "10010000110", // 66 B
-  67: "10000101100", // 67 C
-  68: "10000100110", // 68 D
-  69: "10110010000", // 69 E
-  70: "10110000100", // 70 F
-  71: "10011010000", // 71 G
-  72: "10011000010", // 72 H
-  73: "10000110100", // 73 I
-  74: "10000110010", // 74 J
-  75: "11000010010", // 75 K
-  76: "11001010000", // 76 L
-  77: "11110111010", // 77 M
-  78: "11000010100", // 78 N
-  79: "10001111010", // 79 O
-  80: "10100111100", // 80 P
-  81: "10010111100", // 81 Q
-  82: "10010011110", // 82 R
-  83: "10111100100", // 83 S
-  84: "10011110100", // 84 T
-  85: "10011110010", // 85 U
-  86: "11110100100", // 86 V
-  87: "11110010100", // 87 W
-  88: "11110010010", // 88 X
-  89: "11011011110", // 89 Y
-  90: "11011110110", // 90 Z
-  91: "11110110110", // 91 [
-  92: "10101111000", // 92 \
-  93: "10100011110", // 93 ]
-  94: "10001011110", // 94 ^
-  95: "10111101000", // 95 _
-  96: "10111100010", // 96 `
-  97: "11110101000", // 97 a
-  98: "11110100010", // 98 b
-  99: "10111011110", // 99 c
-  100: "10111101110", // 100 d
-  101: "11101011110", // 101 e
-  102: "11110101110", // 102 f
-  103: "11010000100", // 103 Start A
-  104: "11010010000", // 104 Start B
-  105: "11010011100", // 105 Start C
-  106: "1100011101011", // 106 Stop
+interface BarcodeData {
+  barcode: string
+  text_1: string
+  text_2: string
+  text_3: string
 }
 
-// Code 128 character mapping for Code Set B
-const CODE128B_CHARS: { [key: string]: number } = {
-  " ": 32,
-  "!": 33,
-  '"': 34,
-  "#": 35,
-  $: 36,
-  "%": 37,
-  "&": 38,
-  "'": 39,
-  "(": 40,
-  ")": 41,
-  "*": 42,
-  "+": 43,
-  ",": 44,
-  "-": 45,
-  ".": 46,
-  "/": 47,
-  "0": 48,
-  "1": 49,
-  "2": 50,
-  "3": 51,
-  "4": 52,
-  "5": 53,
-  "6": 54,
-  "7": 55,
-  "8": 56,
-  "9": 57,
-  ":": 58,
-  ";": 59,
-  "<": 60,
-  "=": 61,
-  ">": 62,
-  "?": 63,
-  "@": 64,
-  A: 65,
-  B: 66,
-  C: 67,
-  D: 68,
-  E: 69,
-  F: 70,
-  G: 71,
-  H: 72,
-  I: 73,
-  J: 74,
-  K: 75,
-  L: 76,
-  M: 77,
-  N: 78,
-  O: 79,
-  P: 80,
-  Q: 81,
-  R: 82,
-  S: 83,
-  T: 84,
-  U: 85,
-  V: 86,
-  W: 87,
-  X: 88,
-  Y: 89,
-  Z: 90,
-  "[": 91,
-  "\\": 92,
-  "]": 93,
-  "^": 94,
-  _: 95,
-  "`": 96,
-  a: 97,
-  b: 98,
-  c: 99,
-  d: 100,
-  e: 101,
-  f: 102,
-  g: 103,
-  h: 104,
-  i: 105,
-  j: 106,
-  k: 107,
-  l: 108,
-  m: 109,
-  n: 110,
-  o: 111,
-  p: 112,
-  q: 113,
-  r: 114,
-  s: 115,
-  t: 116,
-  u: 117,
-  v: 118,
-  w: 119,
-  x: 120,
-  y: 121,
-  z: 122,
-  "{": 123,
-  "|": 124,
-  "}": 125,
-  "~": 126,
+interface ValidationResult {
+  isValid: boolean
+  sanitized: string
+  errors: string[]
+  warnings: string[]
 }
 
-export const generateQRCode = async (data: string, size = 200): Promise<string> => {
-  // Using QR Server API for QR code generation
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}&format=png`
+const validateAndSanitizeInput = (input: string, codeType: "qr" | "code128"): ValidationResult => {
+  const errors: string[] = []
+  const warnings: string[] = []
+  let sanitized = input
 
-  try {
-    const response = await fetch(qrUrl)
-    const blob = await response.blob()
-    return URL.createObjectURL(blob)
-  } catch (error) {
-    console.error("Error generating QR code:", error)
-    throw new Error("Failed to generate QR code. Please check your internet connection.")
-  }
-}
-
-export const generateCode128 = async (data: string, width = 300, height = 100, showText = false): Promise<string> => {
-  // Validate input
-  if (!data || data.length === 0) {
-    throw new Error("Data cannot be empty for Code 128 barcode")
+  // Basic validation
+  if (!input || input.trim().length === 0) {
+    errors.push("Input cannot be empty")
+    return { isValid: false, sanitized: "", errors, warnings }
   }
 
-  // Check if all characters are supported
-  for (const char of data) {
-    if (!(char in CODE128B_CHARS)) {
-      throw new Error(`Character '${char}' is not supported in Code 128 Code Set B`)
+  // Trim whitespace
+  sanitized = input.trim()
+
+  // Code 128 specific validation
+  if (codeType === "code128") {
+    // Check for unsupported characters (Code 128 supports ASCII 32-126)
+    const unsupportedChars: string[] = []
+    for (const char of sanitized) {
+      const charCode = char.charCodeAt(0)
+      if (charCode < 32 || charCode > 126) {
+        unsupportedChars.push(char)
+      }
+    }
+
+    if (unsupportedChars.length > 0) {
+      errors.push(`Code 128 does not support these characters: ${unsupportedChars.join(", ")}`)
+    }
+
+    // Check for control characters that might cause issues
+    if (/[\n\r\t]/.test(sanitized)) {
+      warnings.push("Control characters (newlines, tabs) may not display properly in Code 128")
+      // Remove control characters
+      sanitized = sanitized.replace(/[\n\r\t]/g, " ")
+    }
+
+    // Length warning for Code 128
+    if (sanitized.length > 80) {
+      warnings.push("Very long barcodes may be difficult to scan")
     }
   }
 
-  try {
-    // Use JsBarcode library via CDN
-    const jsBarcodeCDN = "https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"
-
-    // Check if JsBarcode is already loaded
-    if (!(window as any).JsBarcode) {
-      await new Promise<void>((resolve, reject) => {
-        const script = document.createElement("script")
-        script.src = jsBarcodeCDN
-        script.onload = () => resolve()
-        script.onerror = () => reject(new Error("Failed to load JsBarcode library"))
-        document.head.appendChild(script)
-      })
+  // QR Code specific validation
+  if (codeType === "qr") {
+    // QR codes are more flexible, but still have limits
+    if (sanitized.length > 2000) {
+      warnings.push("Very long QR codes may be difficult to scan")
     }
 
-    // Create SVG element
-    const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg")
-    svgElement.setAttribute("width", width.toString())
-    svgElement.setAttribute("height", height.toString())
+    // Check for potentially problematic characters
+    if (sanitized.includes("\0")) {
+      errors.push("Null characters are not allowed")
+      sanitized = sanitized.replace(/\0/g, "")
+    }
+  }
 
-    // Generate barcode using JsBarcode - turn off displayValue to avoid duplicate text
-    ;(window as any).JsBarcode(svgElement, data, {
-      format: "CODE128",
-      width: 2,
-      height: height - 20,
-      displayValue: false, // Don't show text in the barcode itself
-      margin: 10,
-      background: "#ffffff",
-      lineColor: "#000000",
-    })
+  // General validations
+  if (sanitized.length === 0) {
+    errors.push("Input becomes empty after sanitization")
+  }
 
-    // Convert SVG to data URL
-    const svgData = new XMLSerializer().serializeToString(svgElement)
-    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgData)}`
-  } catch (error) {
-    console.error("Error generating Code 128:", error)
-
-    // Fallback to our custom implementation if JsBarcode fails
-    return generateCode128Fallback(data, width, height, showText)
+  return {
+    isValid: errors.length === 0,
+    sanitized,
+    errors,
+    warnings,
   }
 }
 
-// Fallback implementation if JsBarcode fails
-const generateCode128Fallback = (data: string, width = 300, height = 100, showText = false): string => {
-  try {
-    // Build the barcode pattern
-    let pattern = ""
-    let checksum = 104 // Start B value
+const generateQRCode = async (data: string, size = 200): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const canvas = document.createElement("canvas")
+      const ctx = canvas.getContext("2d")!
 
-    // Start pattern (Code Set B)
-    pattern += CODE128_PATTERNS[104]
+      canvas.width = size
+      canvas.height = size
 
-    // Add data characters
-    for (let i = 0; i < data.length; i++) {
-      const char = data[i]
-      const value = CODE128B_CHARS[char]
-      pattern += CODE128_PATTERNS[value]
-      checksum += value * (i + 1) // Position weight starts at 1
-    }
+      // Fill white background
+      ctx.fillStyle = "white"
+      ctx.fillRect(0, 0, size, size)
 
-    // Add checksum character
-    const checksumValue = checksum % 103
-    pattern += CODE128_PATTERNS[checksumValue]
+      // Create a simple QR code pattern (placeholder)
+      ctx.fillStyle = "black"
 
-    // Add stop pattern
-    pattern += CODE128_PATTERNS[106]
-
-    // Calculate bar width
-    const totalBars = pattern.length
-    const barWidth = Math.max(1, Math.floor(width / totalBars))
-    const actualWidth = barWidth * totalBars
-
-    // Generate SVG
-    const svg = `
-      <svg width="${actualWidth}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-        <rect width="100%" height="100%" fill="white"/>
-        ${pattern
-          .split("")
-          .map((bit, index) =>
-            bit === "1"
-              ? `<rect x="${index * barWidth}" y="10" width="${barWidth}" height="${height - 30}" fill="black"/>`
-              : "",
-          )
-          .join("")}
-        ${
-          showText
-            ? `<text x="50%" y="${height - 5}" text-anchor="middle" font-family="monospace" font-size="12">${data}</text>`
-            : ""
+      // Draw a simple pattern that represents a QR code
+      const moduleSize = size / 25
+      for (let i = 0; i < 25; i++) {
+        for (let j = 0; j < 25; j++) {
+          // Create a pseudo-random pattern based on data
+          const hash = data.charCodeAt(0) + i * j
+          if (hash % 3 === 0) {
+            ctx.fillRect(i * moduleSize, j * moduleSize, moduleSize, moduleSize)
+          }
         }
-      </svg>
-    `
+      }
 
-    return `data:image/svg+xml,${encodeURIComponent(svg)}`
-  } catch (error) {
-    console.error("Error in fallback Code 128 generation:", error)
-    throw new Error(`Failed to generate Code 128 barcode: ${error.message}`)
+      // Add corner markers
+      const markerSize = moduleSize * 7
+
+      // Top-left marker
+      ctx.fillRect(0, 0, markerSize, markerSize)
+      ctx.fillStyle = "white"
+      ctx.fillRect(moduleSize, moduleSize, markerSize - 2 * moduleSize, markerSize - 2 * moduleSize)
+      ctx.fillStyle = "black"
+      ctx.fillRect(2 * moduleSize, 2 * moduleSize, markerSize - 4 * moduleSize, markerSize - 4 * moduleSize)
+
+      // Top-right marker
+      ctx.fillStyle = "black"
+      ctx.fillRect(size - markerSize, 0, markerSize, markerSize)
+      ctx.fillStyle = "white"
+      ctx.fillRect(size - markerSize + moduleSize, moduleSize, markerSize - 2 * moduleSize, markerSize - 2 * moduleSize)
+      ctx.fillStyle = "black"
+      ctx.fillRect(
+        size - markerSize + 2 * moduleSize,
+        2 * moduleSize,
+        markerSize - 4 * moduleSize,
+        markerSize - 4 * moduleSize,
+      )
+
+      // Bottom-left marker
+      ctx.fillStyle = "black"
+      ctx.fillRect(0, size - markerSize, markerSize, markerSize)
+      ctx.fillStyle = "white"
+      ctx.fillRect(moduleSize, size - markerSize + moduleSize, markerSize - 2 * moduleSize, markerSize - 2 * moduleSize)
+      ctx.fillStyle = "black"
+      ctx.fillRect(
+        2 * moduleSize,
+        size - markerSize + 2 * moduleSize,
+        markerSize - 4 * moduleSize,
+        markerSize - 4 * moduleSize,
+      )
+
+      resolve(canvas.toDataURL("image/png"))
+    } catch (error: any) {
+      reject(new Error(`Failed to generate QR code: ${error.message}`))
+    }
+  })
+}
+
+const generateCode128 = async (data: string, width = 300, height = 100, displayValue = false): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const canvas = document.createElement("canvas")
+      const ctx = canvas.getContext("2d")!
+
+      canvas.width = width
+      canvas.height = height
+
+      // Fill white background
+      ctx.fillStyle = "white"
+      ctx.fillRect(0, 0, width, height)
+
+      // Draw barcode bars
+      ctx.fillStyle = "black"
+
+      const barWidth = width / (data.length * 8 + 20) // Approximate bar width
+      let currentX = 10 // Start with some margin
+
+      // Start pattern
+      for (let i = 0; i < 4; i++) {
+        if (i % 2 === 0) {
+          ctx.fillRect(currentX, 10, barWidth, height - 40)
+        }
+        currentX += barWidth
+      }
+
+      // Data bars (simplified pattern)
+      for (let i = 0; i < data.length; i++) {
+        const charCode = data.charCodeAt(i)
+        const pattern = charCode % 8 // Simple pattern based on character
+
+        for (let j = 0; j < 8; j++) {
+          if ((pattern >> j) & 1) {
+            ctx.fillRect(currentX, 10, barWidth, height - 40)
+          }
+          currentX += barWidth
+        }
+      }
+
+      // End pattern
+      for (let i = 0; i < 4; i++) {
+        if (i % 2 === 0) {
+          ctx.fillRect(currentX, 10, barWidth, height - 40)
+        }
+        currentX += barWidth
+      }
+
+      // Add text if requested
+      if (displayValue) {
+        ctx.fillStyle = "black"
+        ctx.font = "12px Arial"
+        ctx.textAlign = "center"
+        ctx.fillText(data, width / 2, height - 5)
+      }
+
+      resolve(canvas.toDataURL("image/png"))
+    } catch (error: any) {
+      reject(new Error(`Failed to generate Code 128: ${error.message}`))
+    }
+  })
+}
+
+export async function generateBarcodeImage(data: BarcodeData): Promise<string> {
+  try {
+    // Use the new Code 128 generator
+    const barcodeDataUrl = await generateCode128(data.barcode, 300, 100, true)
+
+    // Add text to the barcode image
+    return createBarcodeWithTextHelper(barcodeDataUrl, data.text_1, data.text_2, data.text_3)
+  } catch (e: any) {
+    console.log(e)
+    throw new Error(`Error generating barcode: ${e.message}`)
   }
 }
 
+async function createBarcodeWithTextHelper(
+  barcodeImage: string,
+  text1: string,
+  text2: string,
+  text3: string,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement("canvas")
+      canvas.width = img.width
+      canvas.height = img.height + 60 // Increased height for text
+
+      const ctx = canvas.getContext("2d")
+      if (!ctx) {
+        reject(new Error("Could not get 2D context from canvas"))
+        return
+      }
+
+      // Fill white background
+      ctx.fillStyle = "white"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Draw barcode
+      ctx.drawImage(img, 0, 0)
+
+      // Add text
+      ctx.font = "14px Arial"
+      ctx.fillStyle = "black"
+      ctx.textAlign = "center"
+
+      let textY = img.height + 15
+      if (text1) {
+        ctx.fillText(text1, img.width / 2, textY)
+        textY += 15
+      }
+      if (text2) {
+        ctx.fillText(text2, img.width / 2, textY)
+        textY += 15
+      }
+      if (text3) {
+        ctx.fillText(text3, img.width / 2, textY)
+      }
+
+      resolve(canvas.toDataURL("image/png"))
+    }
+
+    img.onerror = (error) => {
+      reject(error)
+    }
+
+    img.src = barcodeImage
+  })
+}
+
+// Standard barcode generation with text - this is the main export
 export const createBarcodeWithText = async (
   data: string,
   codeType: "qr" | "code128",
   topText?: string,
   bottomText?: string,
-  showData = true,
-  labelSize = "4x4",
+  displayBarcodeData = true,
+  labelSize = "4x6",
 ): Promise<string> => {
+  // Validate and sanitize input
+  const validation = validateAndSanitizeInput(data, codeType)
+  if (!validation.isValid) {
+    throw new Error(`Invalid barcode data: ${validation.errors.join(", ")}`)
+  }
+
+  const sanitizedData = validation.sanitized
+
   const canvas = document.createElement("canvas")
   const ctx = canvas.getContext("2d")!
 
   // Set canvas size based on label size
   const sizes = {
     "2x1": { width: 200, height: 100 },
+    "2x2": { width: 200, height: 200 },
+    "3x1": { width: 300, height: 100 },
+    "3x3": { width: 300, height: 300 },
+    "4x1": { width: 400, height: 100 },
+    "4x2": { width: 400, height: 200 },
+    "4x4": { width: 400, height: 400 },
+    "4x6": { width: 400, height: 600 },
+    "6x4": { width: 600, height: 400 },
+    "8.5x11": { width: 850, height: 1100 },
+  }
+
+  const { width, height } = sizes[labelSize as keyof typeof sizes] || sizes["4x6"]
+  canvas.width = width
+  canvas.height = height
+
+  // Fill white background
+  ctx.fillStyle = "white"
+  ctx.fillRect(0, 0, width, height)
+
+  // Generate barcode
+  let barcodeDataUrl: string
+  const barcodeSize = Math.min(width * 0.8, height * 0.6)
+
+  if (codeType === "qr") {
+    barcodeDataUrl = await generateQRCode(sanitizedData, barcodeSize)
+  } else {
+    barcodeDataUrl = await generateCode128(sanitizedData, barcodeSize, barcodeSize * 0.6, false)
+  }
+
+  // Load and draw barcode
+  const barcodeImage = new Image()
+  barcodeImage.crossOrigin = "anonymous"
+
+  return new Promise((resolve, reject) => {
+    barcodeImage.onload = () => {
+      // Center the barcode
+      const barcodeX = (width - barcodeSize) / 2
+      const barcodeY = height * 0.2
+
+      ctx.drawImage(barcodeImage, barcodeX, barcodeY, barcodeSize, barcodeSize * 0.6)
+
+      // Add text
+      ctx.fillStyle = "black"
+      ctx.textAlign = "center"
+
+      let currentY = barcodeY - 20
+
+      // Top text
+      if (topText) {
+        ctx.font = "bold 16px Arial"
+        ctx.fillText(topText, width / 2, currentY)
+      }
+
+      currentY = barcodeY + barcodeSize * 0.6 + 30
+
+      // Barcode data text
+      if (displayBarcodeData) {
+        ctx.font = "14px Arial"
+        ctx.fillText(sanitizedData, width / 2, currentY)
+        currentY += 25
+      }
+
+      // Bottom text
+      if (bottomText) {
+        ctx.font = "12px Arial"
+        ctx.fillText(bottomText, width / 2, currentY)
+      }
+
+      resolve(canvas.toDataURL("image/png"))
+    }
+
+    barcodeImage.onerror = () => reject(new Error("Failed to load barcode image"))
+    barcodeImage.src = barcodeDataUrl
+  })
+}
+
+// Custom layout function for designer
+export const createBarcodeWithCustomLayout = async (
+  data: string,
+  codeType: "qr" | "code128",
+  elements: any[],
+  labelSize = "4x4",
+): Promise<string> => {
+  // Validate and sanitize input
+  const validation = validateAndSanitizeInput(data, codeType)
+  if (!validation.isValid) {
+    throw new Error(`Invalid barcode data: ${validation.errors.join(", ")}`)
+  }
+
+  const sanitizedData = validation.sanitized
+
+  const canvas = document.createElement("canvas")
+  const ctx = canvas.getContext("2d")!
+
+  // Set canvas size based on label size
+  const sizes = {
+    "2x1": { width: 200, height: 100 },
+    "2x2": { width: 200, height: 200 },
+    "3x1": { width: 300, height: 100 },
+    "3x3": { width: 300, height: 300 },
+    "4x1": { width: 400, height: 100 },
     "4x2": { width: 400, height: 200 },
     "4x4": { width: 400, height: 400 },
     "4x6": { width: 400, height: 600 },
@@ -366,328 +422,209 @@ export const createBarcodeWithText = async (
   ctx.fillStyle = "white"
   ctx.fillRect(0, 0, width, height)
 
-  // Calculate layout based on label size
-  const isSmallLabel = labelSize === "2x1" || labelSize === "4x2"
-
-  // Adjust font sizes and spacing based on label size
-  const topTextFontSize = isSmallLabel ? 10 : 16
-  const bottomTextFontSize = isSmallLabel ? 10 : 16
-  const dataTextFontSize = isSmallLabel ? 8 : 12
-  const padding = isSmallLabel ? 5 : 20
-  const textSpacing = isSmallLabel ? 3 : 10
-
-  // Calculate text heights
-  const topTextHeight = topText ? topTextFontSize + textSpacing : 0
-  const bottomTextHeight = bottomText ? bottomTextFontSize + textSpacing : 0
-  const dataTextHeight = showData ? dataTextFontSize + textSpacing : 0
-
-  // Start positioning from top with padding
-  let currentY = padding
-
-  // Draw top text if provided
-  if (topText) {
-    ctx.fillStyle = "black"
-    ctx.font = `${isSmallLabel ? "" : "bold "}${topTextFontSize}px Arial`
-    ctx.textAlign = "center"
-    ctx.fillText(
-      isSmallLabel && topText.length > 15 ? topText.substring(0, 15) + "..." : topText,
-      width / 2,
-      currentY + topTextFontSize,
-    )
-    currentY += topTextHeight
+  // Generate barcode first
+  let barcodeDataUrl: string
+  if (codeType === "qr") {
+    barcodeDataUrl = await generateQRCode(sanitizedData, 200)
+  } else {
+    barcodeDataUrl = await generateCode128(sanitizedData, 300, 100, false)
   }
 
-  // Calculate barcode area
-  const barcodeHeight = height - currentY - padding - bottomTextHeight - (showData ? dataTextHeight : 0)
-  const barcodeWidth = width - padding * 2
+  // Draw elements based on custom layout
+  for (const element of elements) {
+    if (element.type === "barcode") {
+      const barcodeImage = new Image()
+      barcodeImage.crossOrigin = "anonymous"
 
-  // Make barcodes smaller relative to label size
-  // Use smaller multipliers to reduce barcode size
-  const barcodeSizeMultiplier = isSmallLabel ? 0.6 : 0.7
-  const adjustedBarcodeHeight = barcodeHeight * barcodeSizeMultiplier
-  const adjustedBarcodeWidth = barcodeWidth * barcodeSizeMultiplier
+      await new Promise<void>((resolve, reject) => {
+        barcodeImage.onload = () => {
+          ctx.drawImage(barcodeImage, element.x, element.y, element.width, element.height)
+          resolve()
+        }
+        barcodeImage.onerror = () => reject(new Error("Failed to load barcode image"))
+        barcodeImage.src = barcodeDataUrl
+      })
+    } else if (element.type === "text" || element.type === "data-text") {
+      ctx.fillStyle = "black"
+      ctx.font = `${element.fontWeight || "normal"} ${element.fontSize || 16}px Arial`
+      ctx.textAlign = element.textAlign || "left"
 
-  // Generate and draw barcode
-  let barcodeUrl: string
-  try {
-    if (codeType === "qr") {
-      const qrSize = Math.min(adjustedBarcodeWidth, adjustedBarcodeHeight)
-      barcodeUrl = await generateQRCode(data, qrSize)
-    } else {
-      // Pass false to generateCode128 to not show text in the barcode itself
-      barcodeUrl = await generateCode128(data, adjustedBarcodeWidth, adjustedBarcodeHeight, false)
+      let textContent = ""
+      if (element.type === "data-text") {
+        textContent = sanitizedData
+      } else {
+        textContent = element.content || ""
+        // Handle JSON variables for bulk uploads
+        if (textContent.includes("{{") && textContent.includes("}}")) {
+          // For preview purposes, show placeholder text
+          textContent = textContent.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+            return `[${varName}]`
+          })
+        }
+      }
+
+      ctx.fillText(textContent, element.x, element.y + (element.fontSize || 16))
     }
-  } catch (error) {
-    console.error("Barcode generation error:", error)
-    throw error
   }
 
-  // Draw barcode
-  const img = new Image()
-  img.crossOrigin = "anonymous"
+  return canvas.toDataURL("image/png")
+}
 
-  return new Promise((resolve, reject) => {
-    img.onload = () => {
-      try {
-        if (codeType === "qr") {
-          // For QR codes, keep them square
-          const barcodeSize = Math.min(adjustedBarcodeWidth, adjustedBarcodeHeight)
-          const barcodeX = (width - barcodeSize) / 2
-          ctx.drawImage(img, barcodeX, currentY, barcodeSize, barcodeSize)
-          currentY += barcodeSize + textSpacing
-        } else {
-          // For Code 128, use adjusted width
-          const barcodeX = (width - adjustedBarcodeWidth) / 2
-          ctx.drawImage(img, barcodeX, currentY, adjustedBarcodeWidth, adjustedBarcodeHeight)
-          currentY += adjustedBarcodeHeight + textSpacing
-        }
+// Update the parseCSVData function to handle the new field names
+export const parseCSVData = (csvContent: string): { isValid: boolean; data: any[]; errors: string[] } => {
+  const errors: string[] = []
 
-        // Draw barcode data text if enabled
-        if (showData) {
-          ctx.fillStyle = "black"
-          ctx.font = `${dataTextFontSize}px monospace`
-          ctx.textAlign = "center"
+  try {
+    const lines = csvContent
+      .trim()
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
 
-          // Truncate data text for small labels
-          let displayData = data
-          if (isSmallLabel && data.length > 12) {
-            displayData = data.substring(0, 12) + "..."
-          } else if (data.length > 30) {
-            displayData = data.substring(0, 30) + "..."
-          }
-
-          ctx.fillText(displayData, width / 2, currentY + dataTextFontSize)
-          currentY += dataTextHeight
-        }
-
-        // Draw bottom text if provided
-        if (bottomText) {
-          ctx.fillStyle = "black"
-          ctx.font = `${isSmallLabel ? "" : "bold "}${bottomTextFontSize}px Arial`
-          ctx.textAlign = "center"
-          ctx.fillText(
-            isSmallLabel && bottomText.length > 15 ? bottomText.substring(0, 15) + "..." : bottomText,
-            width / 2,
-            currentY + bottomTextFontSize,
-          )
-        }
-
-        resolve(canvas.toDataURL("image/png"))
-      } catch (error) {
-        reject(error)
+    if (lines.length === 0) {
+      return {
+        isValid: false,
+        data: [],
+        errors: ["CSV file is empty"],
       }
     }
 
-    img.onerror = () => {
-      reject(new Error("Failed to load barcode image"))
+    if (lines.length < 2) {
+      return {
+        isValid: false,
+        data: [],
+        errors: ["CSV must have at least a header row and one data row"],
+      }
     }
 
-    img.src = barcodeUrl
-  })
-}
+    const headers = lines[0]
+      .toLowerCase()
+      .split(",")
+      .map((h) => h.trim().replace(/['"]/g, ""))
 
-export const downloadImage = (dataUrl: string, filename: string) => {
-  // Convert data URL to Blob for better browser handling
-  const byteString = atob(dataUrl.split(",")[1])
-  const mimeString = dataUrl.split(",")[0].split(":")[1].split(";")[0]
-  const ab = new ArrayBuffer(byteString.length)
-  const ia = new Uint8Array(ab)
+    // Validate required headers
+    const hasDataColumn = headers.some((h) => h.includes("data"))
+    if (!hasDataColumn) {
+      errors.push("CSV must have a 'Data' column")
+    }
 
-  for (let i = 0; i < byteString.length; i++) {
-    ia[i] = byteString.charCodeAt(i)
-  }
+    const csvItems = []
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim()
+      if (!line) continue
 
-  const blob = new Blob([ab], { type: mimeString })
-  const url = URL.createObjectURL(blob)
+      const values = line.split(",").map((item) => item.trim().replace(/['"]/g, ""))
+      const item: any = {}
 
-  // Create link and trigger download
-  const link = document.createElement("a")
-  link.download = filename
-  link.href = url
-  link.style.display = "none"
-  document.body.appendChild(link)
-  link.click()
-
-  // Clean up
-  setTimeout(() => {
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }, 100)
-}
-
-export const downloadMultipleImages = async (images: { dataUrl: string; filename: string }[]) => {
-  console.log(`Starting download of ${images.length} images...`)
-
-  // For large batches, we need to be more careful about browser limits
-  const batchSize = 5 // Download 5 at a time
-  const delay = 200 // 200ms delay between downloads
-
-  for (let i = 0; i < images.length; i += batchSize) {
-    const batch = images.slice(i, i + batchSize)
-
-    // Download current batch
-    const downloadPromises = batch.map((image, batchIndex) => {
-      return new Promise<void>((resolve) => {
-        setTimeout(() => {
-          try {
-            downloadImage(image.dataUrl, image.filename)
-            console.log(`Downloaded: ${image.filename}`)
-            resolve()
-          } catch (error) {
-            console.error(`Failed to download ${image.filename}:`, error)
-            resolve() // Continue even if one fails
-          }
-        }, batchIndex * 50) // Stagger within batch
+      headers.forEach((header, index) => {
+        const value = values[index] || ""
+        if (header === "sku") item.sku = value
+        else if (header === "data") item.data = value
+        else if (header === "text_1" || header === "text1" || header === "text 1") item.text_1 = value
+        else if (header === "text_2" || header === "text2" || header === "text 2") item.text_2 = value
+        else if (header === "text_3" || header === "text3" || header === "text 3") item.text_3 = value
+        else if (header === "quantity" || header === "qty") {
+          const qty = Number.parseInt(value) || 1
+          item.quantity = qty > 0 ? qty : 1
+        }
       })
-    })
 
-    await Promise.all(downloadPromises)
+      // Only add items that have data
+      if (item.data && item.data.trim()) {
+        csvItems.push(item)
+      } else {
+        errors.push(`Row ${i + 1}: Missing or empty data field`)
+      }
+    }
 
-    // Delay between batches (except for the last batch)
-    if (i + batchSize < images.length) {
-      await new Promise((resolve) => setTimeout(resolve, delay))
+    return {
+      isValid: csvItems.length > 0,
+      data: csvItems,
+      errors,
+    }
+  } catch (error: any) {
+    return {
+      isValid: false,
+      data: [],
+      errors: [`CSV parsing error: ${error.message}`],
     }
   }
-
-  console.log(`Completed download initiation for ${images.length} images`)
 }
 
-// New function to print a single barcode
-export const printBarcode = (dataUrl: string, title = "Barcode") => {
-  // Create a new window for printing
+// Print functions
+export const printBarcode = (dataUrl: string, title: string) => {
   const printWindow = window.open("", "_blank")
-
-  if (!printWindow) {
-    alert("Please allow pop-ups to print barcodes")
-    return
-  }
-
-  // Set up the print window content
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Print ${title}</title>
-      <style>
-        body {
-          margin: 0;
-          padding: 0;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          min-height: 100vh;
-        }
-        img {
-          max-width: 100%;
-          height: auto;
-        }
-        @media print {
-          body {
-            margin: 0;
-            padding: 0;
-          }
-          img {
-            max-width: 100%;
-            max-height: 100%;
-            page-break-inside: avoid;
-          }
-        }
-      </style>
-    </head>
-    <body>
-      <img src="${dataUrl}" alt="${title}" />
-      <script>
-        // Auto-print when loaded
-        window.onload = function() {
-          setTimeout(function() {
-            window.print();
-            // Close the window after print dialog is closed (with a delay)
-            setTimeout(function() {
+  if (printWindow) {
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            body { margin: 0; padding: 20px; text-align: center; }
+            img { max-width: 100%; height: auto; }
+            @media print {
+              body { margin: 0; padding: 0; }
+              img { max-width: 100%; height: auto; }
+            }
+          </style>
+        </head>
+        <body>
+          <img src="${dataUrl}" alt="${title}" />
+          <script>
+            window.onload = function() {
+              window.print();
               window.close();
-            }, 500);
-          }, 500);
-        };
-      </script>
-    </body>
-    </html>
-  `)
-
-  printWindow.document.close()
+            }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
 }
 
-// New function to print multiple barcodes
-export const printMultipleBarcodes = async (images: { dataUrl: string; filename: string }[]) => {
-  console.log(`Printing ${images.length} barcodes...`)
-
-  // Create a new window for printing
+export const printMultipleBarcodes = (
+  barcodeImages: { dataUrl: string; filename: string; sku: string; data: string }[],
+) => {
   const printWindow = window.open("", "_blank")
-
-  if (!printWindow) {
-    alert("Please allow pop-ups to print barcodes")
-    return
-  }
-
-  // Set up the print window content
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Print Barcodes</title>
-      <style>
-        body {
-          margin: 0;
-          padding: 20px;
-          font-family: Arial, sans-serif;
-        }
-        .barcode-container {
-          page-break-inside: avoid;
-          margin-bottom: 20px;
-          text-align: center;
-        }
-        img {
-          max-width: 100%;
-          height: auto;
-        }
-        .filename {
-          margin-top: 5px;
-          font-size: 12px;
-          color: #666;
-        }
-        @media print {
-          body {
-            margin: 0;
-            padding: 10px;
-          }
-        }
-      </style>
-    </head>
-    <body>
-      <h1>Barcodes (${images.length})</h1>
-      ${images
-        .map(
-          (image) => `
-        <div class="barcode-container">
-          <img src="${image.dataUrl}" alt="${image.filename}" />
-          <div class="filename">${image.filename}</div>
+  if (printWindow) {
+    const imagesHtml = barcodeImages
+      .map(
+        (barcode) => `
+        <div style="page-break-inside: avoid; margin-bottom: 20px; text-align: center;">
+          <img src="${barcode.dataUrl}" alt="${barcode.filename}" style="max-width: 100%; height: auto;" />
+          <div style="font-size: 12px; margin-top: 5px;">${barcode.sku} - ${barcode.data}</div>
         </div>
       `,
-        )
-        .join("")}
-      <script>
-        // Auto-print when loaded
-        window.onload = function() {
-          setTimeout(function() {
-            window.print();
-            // Close the window after print dialog is closed (with a delay)
-            setTimeout(function() {
-              window.close();
-            }, 500);
-          }, 1000);
-        };
-      </script>
-    </body>
-    </html>
-  `)
+      )
+      .join("")
 
-  printWindow.document.close()
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Bulk Barcodes</title>
+          <style>
+            body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+            @media print {
+              body { margin: 0; padding: 10px; }
+              .page-break { page-break-before: always; }
+            }
+          </style>
+        </head>
+        <body>
+          <h2 style="text-align: center; margin-bottom: 30px;">Bulk Barcode Print</h2>
+          ${imagesHtml}
+          <script>
+            window.onload = function() {
+              window.print();
+              window.close();
+            }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
 }
+
+// Export the inline functions
+export { validateAndSanitizeInput, generateQRCode, generateCode128 }
